@@ -1,30 +1,46 @@
 # Email Spam Classifier
 
 Classifies messages as **spam** or **ham** using classical NLP — text cleaning,
-tokenising, stop-word removal, lemmatisation, TF-IDF — with four classifiers
-compared on cross-validated and held-out accuracy.
+tokenising, stop-word removal, lemmatisation, TF-IDF — with five classifiers
+compared on cross-validated F1 and held-out accuracy.
 
 **Data:** `spam_ham_dataset.csv` — 5,171 messages (3,672 ham / 1,499 spam),
 included in this repo.
 
 ## Results
 
-10-fold cross-validation on the training split, then evaluated on a held-out
-20% test set (stratified), after removing length outliers:
+The primary metric is **F1 on the spam class**. 10-fold cross-validation on the
+training split, then a held-out stratified 20% test set, after removing length
+outliers:
 
-| Model | Precision | Recall | F1 | CV accuracy | Test accuracy |
+| Model | Precision | Recall | F1 | CV F1 | Test accuracy |
 |---|---|---|---|---|---|
-| Naive Bayes | 1.0000 | 0.7787 | 0.8756 | 0.9124 | 0.9405 |
-| Random Forest | 0.9407 | 0.9754 | 0.9577 | 0.9799 | 0.9769 |
-| K-Neighbours | 0.9737 | 0.9098 | 0.9407 | 0.9587 | 0.9692 |
-| **SVC** | 0.9528 | 0.9918 | 0.9719 | **0.9871** | **0.9846** |
+| Naive Bayes | 1.0000 | 0.7787 | 0.8756 | 0.8056 | 0.9405 |
+| Logistic Regression | 0.9488 | 0.9877 | 0.9679 | 0.9728 | 0.9824 |
+| Random Forest | 0.9407 | 0.9754 | 0.9577 | 0.9631 | 0.9769 |
+| K-Neighbours | 0.9737 | 0.9098 | 0.9407 | 0.9181 | 0.9692 |
+| **SVC** | 0.9528 | 0.9918 | **0.9719** | **0.9765** | **0.9846** |
 
-SVC wins at 98.5% test accuracy. Naive Bayes has perfect precision on spam but
-misses 22% of it (recall 0.78) — it is the conservative model.
+SVC wins on F1 at 0.9719. Logistic Regression is a close second — 0.9728 CV F1
+and 0.9824 test accuracy — and trains in a fraction of the time, so it is the
+better pick if the model has to be refitted regularly.
+
+### Why F1 rather than accuracy
+
+Spam is 27% of the corpus, so predicting "ham" for everything already scores
+**0.7313** accuracy while catching no spam at all. Accuracy is inflated by the
+majority class and hides the failure that actually matters.
+
+Naive Bayes is the clearest case. Its **0.9405 accuracy** looks respectable, but
+its F1 is only **0.8756**, because it misses 22% of spam (recall 0.7787). Ranked
+by accuracy it sits near the others; ranked by F1 the gap is plain.
+
+Precision, recall and F1 are all reported for the **spam** class
+(`pos_label=1`), not averaged across both.
 
 Note the train-accuracy column in the notebook: Random Forest and SVC both hit
 1.0000 on the training data, which is ordinary overfitting on a sparse
-26k-feature matrix; the cross-validated and test figures are what matter.
+26k-feature matrix; the cross-validated and held-out figures are what matter.
 
 ## Running it
 
@@ -58,8 +74,9 @@ requirements.txt
 - **Cleaning** — strip non-letters, lowercase, collapse whitespace.
 - **Preprocessing** — word tokenise, drop English stop words, lemmatise verbs.
 - **Vectorising** — TF-IDF over the joined tokens (26,239 features).
-- **Model comparison** — Naive Bayes, Random Forest, K-Neighbours, SVC, each
-  cross-validated before the held-out evaluation.
+- **Model comparison** — Naive Bayes, Logistic Regression, Random Forest,
+  K-Neighbours and SVC, each cross-validated by F1 before the held-out
+  evaluation.
 - **Scoring** — precision/recall/F1 are reported for the *spam* class, which is
   the class that matters, rather than averaged over both.
 
