@@ -38,6 +38,34 @@ by accuracy it sits near the others; ranked by F1 the gap is plain.
 Precision, recall and F1 are all reported for the **spam** class
 (`pos_label=1`), not averaged across both.
 
+### The imbalance, and why nothing was resampled
+
+Spam is **26.9%** of the corpus. That is mild — the usual trouble starts below
+roughly 10–20% — and neither model is ignoring the minority class: both catch
+about 99% of spam, so the classic failure mode is simply absent.
+
+Applying the textbook remedy makes a mail filter worse here, so it is not used:
+
+| Logistic Regression | Precision | Recall | F1 | Real email flagged spam |
+|---|---|---|---|---|
+| plain | 0.9488 | 0.9877 | 0.9679 | 13 |
+| `class_weight="balanced"` | 0.8443 | 1.0000 | 0.9156 | **45** |
+
+Recall is already 0.99, so extra class weight has nothing left to buy and only
+spends precision — it **triples** the false positives. For a mail filter that is
+the wrong trade: a false positive sends a real message to the spam folder, which
+costs more than a missed spam sitting in the inbox.
+
+Resampling is a poor fit for TF-IDF text in any case. SMOTE interpolates between
+documents in feature space, producing vectors with non-integer TF-IDF weights
+that correspond to no real message, and undersampling would discard real ham
+from an already small 4,539-row corpus.
+
+If the operating point ever needs moving, it is a **threshold** decision rather
+than a resampling one. On logistic regression, moving the cut from 0.50 to 0.60
+halves the false positives (13 → 6) for more missed spam (3 → 15). That choice
+belongs to whoever owns the filter's cost model, not to the training script.
+
 Note the train-accuracy column in the notebook: Random Forest and SVC both hit
 1.0000 on the training data, which is ordinary overfitting on a sparse
 26k-feature matrix; the cross-validated and held-out figures are what matter.
